@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from lgdo.lh5 import utils
+from lh5.io import utils
 
 
 @pytest.fixture(scope="module")

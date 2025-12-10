@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from lgdo import lh5
+import lh5
 
 
 def test_ls(lgnd_test_data):

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import numpy as np
+from lgdo.types import ArrayOfEncodedEqualSizedArrays, ArrayOfEqualSizedArrays
 
-from lgdo import ArrayOfEncodedEqualSizedArrays, ArrayOfEqualSizedArrays
-from lgdo.compression import varlen
+from lh5.compression import varlen
 
 rng = np.random.default_rng()
 

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import pytest
-
 from lgdo import types
-from lgdo.lh5 import datatype
+
+from lh5.io import datatype
 
 
 def test_datatype2lgdo():

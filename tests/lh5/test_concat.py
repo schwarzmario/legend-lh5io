@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+from lgdo import types
 
-from lgdo import lh5, types
-from lgdo.lh5 import concat
+import lh5
+from lh5.io import concat
 
 
 def test_concat(lgnd_test_data, tmptestdir):

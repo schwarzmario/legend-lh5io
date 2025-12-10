@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import lgdo
 import numpy as np
 import pytest
+from lgdo import types
 
-import lgdo
-from lgdo import compression, lh5, types
+import lh5
+from lh5 import compression
 
 
 @pytest.fixture(scope="module")

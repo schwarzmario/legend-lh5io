@@ -3,9 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
+from lgdo import types
 
-from lgdo import lh5, types
-from lgdo.lh5 import utils
+import lh5
+from lh5.io import utils
 
 
 def test_expand_path_with_path_objects(tmp_path):

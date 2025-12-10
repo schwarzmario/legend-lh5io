@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from lgdo import lh5
+import lh5
 
 
 @pytest.fixture

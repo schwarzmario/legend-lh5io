@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-from lgdo import ArrayOfEncodedEqualSizedArrays, compression
-from lgdo.compression import RadwareSigcompress
-from lgdo.compression.generic import _is_codec
+from lgdo.types import ArrayOfEncodedEqualSizedArrays
+
+from lh5 import compression
+from lh5.compression import RadwareSigcompress
+from lh5.compression.generic import _is_codec
 
 
 def test_encode_decode_array(wftable):

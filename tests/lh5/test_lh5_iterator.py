@@ -4,13 +4,14 @@ import shutil
 from copy import deepcopy
 
 import awkward as ak
+import lgdo
 import numpy as np
 import pandas as pd
 import pytest
 from hist import axis
+from lgdo import Table
 
-import lgdo
-from lgdo import Table, lh5
+import lh5
 
 
 @pytest.fixture(scope="module")

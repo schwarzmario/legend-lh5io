@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import lgdo
 import numpy as np
 import pytest
 
-import lgdo
-from lgdo import lh5
+import lh5
 
 
 def test_read(lh5_file):
@@ -62,7 +62,7 @@ def test_write_safe(tmptestdir):
     ]
 
     # write_safe should not allow writing to existing dataset
-    with pytest.raises(lh5.exceptions.LH5EncodeError):
+    with pytest.raises(lh5.io.exceptions.LH5EncodeError):
         lh5.write(
             struct,
             "struct",

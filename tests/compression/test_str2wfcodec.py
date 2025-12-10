@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from lgdo.compression import RadwareSigcompress
-from lgdo.compression.utils import str2wfcodec
+from lh5.compression import RadwareSigcompress
+from lh5.compression.utils import str2wfcodec
 
 
 def test_str2wfcodec():

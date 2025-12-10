@@ -7,8 +7,9 @@ import awkward as ak
 import h5py
 import numpy as np
 import pytest
+from lgdo import types
 
-from lgdo import lh5, types
+import lh5
 
 
 def test_write_compressed_lgnd_waveform_table(enc_lgnd_file):
@@ -25,8 +26,8 @@ def test_write_with_hdf5_compression_global(tmptestdir):
     )
     outfile = f"{tmptestdir}/write_hdf5_data_global_var.lh5"
 
-    lh5.settings.DEFAULT_HDF5_SETTINGS["shuffle"] = False
-    lh5.settings.DEFAULT_HDF5_SETTINGS["compression"] = "lzf"
+    lh5.io.settings.DEFAULT_HDF5_SETTINGS["shuffle"] = False
+    lh5.io.settings.DEFAULT_HDF5_SETTINGS["compression"] = "lzf"
 
     lh5.write(data, "data", outfile, wo_mode="of")
 
@@ -34,9 +35,9 @@ def test_write_with_hdf5_compression_global(tmptestdir):
         assert h5f["/data/col1"].shuffle is False
         assert h5f["/data/col1"].compression == "lzf"
 
-    lh5.settings.DEFAULT_HDF5_SETTINGS = lh5.settings.default_hdf5_settings()
-    assert lh5.settings.DEFAULT_HDF5_SETTINGS["shuffle"] is True
-    assert lh5.settings.DEFAULT_HDF5_SETTINGS["compression"] == "gzip"
+    lh5.io.settings.DEFAULT_HDF5_SETTINGS = lh5.io.settings.default_hdf5_settings()
+    assert lh5.io.settings.DEFAULT_HDF5_SETTINGS["shuffle"] is True
+    assert lh5.io.settings.DEFAULT_HDF5_SETTINGS["compression"] == "gzip"
 
 
 def test_write_with_hdf5_compression(lgnd_file, tmptestdir):

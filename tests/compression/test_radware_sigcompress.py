@@ -3,9 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
+from lgdo.types import ArrayOfEncodedEqualSizedArrays, ArrayOfEqualSizedArrays
 
-from lgdo import ArrayOfEncodedEqualSizedArrays, ArrayOfEqualSizedArrays, lh5
-from lgdo.compression.radware import (
+import lh5
+from lh5.compression.radware import (
     _get_hton_u16,
     _radware_sigcompress_decode,
     _radware_sigcompress_encode,
@@ -13,7 +14,7 @@ from lgdo.compression.radware import (
     decode,
     encode,
 )
-from lgdo.compression.radware import _radware_sigcompress_mask as _mask
+from lh5.compression.radware import _radware_sigcompress_mask as _mask
 
 config_dir = Path(__file__).parent / "sigcompress"
 

@@ -7,9 +7,10 @@ from pathlib import Path
 import h5py
 import numpy as np
 import pytest
+from lgdo import types
 
-from lgdo import lh5, types
-from lgdo.lh5.exceptions import LH5DecodeError, LH5EncodeError
+import lh5
+from lh5.io.exceptions import LH5DecodeError, LH5EncodeError
 
 
 def test_tools(tmptestdir):
@@ -58,7 +59,7 @@ def test_write_safe(tmptestdir):
     )
 
     # write_safe should not allow writing to existing dataset
-    with pytest.raises(lh5.exceptions.LH5EncodeError):
+    with pytest.raises(LH5EncodeError):
         lh5.write(
             struct,
             "struct",
@@ -88,7 +89,7 @@ def test_write_cleanup_on_error(tmptestdir):
     h = types.Histogram(np.array([[1]]), (np.array([0, 1]), np.array([0, 1])))
 
     lh5.write(h, "hist", outfile, wo_mode="overwrite_file")
-    with pytest.raises(lh5.exceptions.LH5EncodeError):
+    with pytest.raises(LH5EncodeError):
         lh5.write(h, "hist", outfile, wo_mode="append")
 
     # file should be closed so we can open it again
@@ -103,7 +104,7 @@ def test_write_append_struct(tmptestdir):
     lh5.write(st2, "struct", outfile, wo_mode="ac")
 
     # test error when appending existing field
-    with pytest.raises(lh5.exceptions.LH5EncodeError):
+    with pytest.raises(LH5EncodeError):
         lh5.write(
             types.Struct({"arr2": types.Array([4, 5, 6])}),
             "struct",
@@ -112,7 +113,7 @@ def test_write_append_struct(tmptestdir):
         )
 
     # error if appending to object of different type
-    with pytest.raises(lh5.exceptions.LH5EncodeError):
+    with pytest.raises(LH5EncodeError):
         lh5.write(
             types.Struct({"arr2": types.Array([4, 5, 6])}),
             "struct",
@@ -125,7 +126,7 @@ def test_write_append_struct(tmptestdir):
     )
 
     # error if appending to object of different type
-    with pytest.raises(lh5.exceptions.LH5EncodeError):
+    with pytest.raises(LH5EncodeError):
         lh5.write(
             types.Table({"arr2": types.Array([4, 5, 6, 7])}),
             "struct",
@@ -144,7 +145,7 @@ def test_write_object_append_column(tmptestdir):
     tb1 = types.Table(col_dict={"dset1`": types.Array(np.ones(10))})
     store = lh5.LH5Store()
     store.write(array1, "my_table", f"{tmptestdir}/write_object_append_column_test.lh5")
-    with pytest.raises(lh5.exceptions.LH5EncodeError):
+    with pytest.raises(LH5EncodeError):
         store.write(
             tb1,
             "my_table",
@@ -167,7 +168,7 @@ def test_write_object_append_column(tmptestdir):
     )  # Same field name, different values
     store = lh5.LH5Store()
     store.write(tb1, "my_table", f"{tmptestdir}/write_object_append_column_test.lh5")
-    with pytest.raises(lh5.exceptions.LH5EncodeError):
+    with pytest.raises(LH5EncodeError):
         store.write(
             tb2,
             "my_table",
@@ -185,7 +186,7 @@ def test_write_object_append_column(tmptestdir):
     )  # different field name, different size
     store = lh5.LH5Store()
     store.write(tb1, "my_table", f"{tmptestdir}/write_object_append_column_test.lh5")
-    with pytest.raises(lh5.exceptions.LH5EncodeError):
+    with pytest.raises(LH5EncodeError):
         store.write(
             tb2,
             "my_table",
@@ -223,7 +224,7 @@ def test_write_histogram(caplog, tmptestdir):
         group="my_group",
         wo_mode="append",
     )
-    with pytest.raises(lh5.exceptions.LH5EncodeError):
+    with pytest.raises(LH5EncodeError):
         # appending to an existing histogram should not work.
         store.write(
             h1,
@@ -242,7 +243,7 @@ def test_write_histogram(caplog, tmptestdir):
 
     # Now, check that writing with other modes throws.
     for disallowed_wo_mode in ["append", "append_column"]:
-        with pytest.raises(lh5.exceptions.LH5EncodeError):
+        with pytest.raises(LH5EncodeError):
             store.write(
                 h2,
                 "my_histogram",
@@ -250,7 +251,7 @@ def test_write_histogram(caplog, tmptestdir):
                 wo_mode=disallowed_wo_mode,
                 group="my_group",
             )
-    with pytest.raises(lh5.exceptions.LH5EncodeError):
+    with pytest.raises(LH5EncodeError):
         store.write(
             h2,
             "my_histogram",
