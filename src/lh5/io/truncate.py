@@ -8,8 +8,8 @@ import re
 from collections.abc import Callable
 
 import awkward as ak
-
 from lgdo.types import LGDO, Array, Struct, Table, VectorOfVectors, WaveformTable
+
 import lh5
 from lh5 import read, read_as
 
