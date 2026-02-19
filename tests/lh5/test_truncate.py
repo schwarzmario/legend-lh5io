@@ -233,7 +233,7 @@ def test_truncate_dsp(lgnd_test_data, tmptestdir):
         ]
     )
 
-    assert len(read_as("ch1052803/dsp/timestamp", dsp_file, "ak")) <= 25
+    assert len(read_as("ch1052803/dsp/timestamp", outfile1, "ak")) <= 25
 
     # this will fail if outfile1 or outfile2 are too small, probably because there can be
     # channels with 0 entries.
