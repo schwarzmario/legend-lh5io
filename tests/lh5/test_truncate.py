@@ -362,3 +362,59 @@ def test_truncate_raw(lgnd_test_data, tmptestdir):
         read_as("ch1057605/raw/waveform_bit_drop/values", raw_file, "ak")
         == read_as("ch1057605/raw/waveform_bit_drop/values", outfile_concat, "ak")
     )
+
+
+def test_truncate_include_exclude(lgnd_test_data, tmptestdir):
+    hit_file = lgnd_test_data.get_path(
+        "lh5/l200-truncated/generated/tier/hit/ath/p13/r001/l200-p13-r001-ath-20241210T230220Z-tier_hit.lh5"
+    )
+    tcm_file = lgnd_test_data.get_path(
+        "lh5/l200-truncated/generated/tier/tcm/ath/p13/r001/l200-p13-r001-ath-20241210T230220Z-tier_tcm.lh5"
+    )
+
+    outfile = f"{tmptestdir}/hit_trunc137.lh5"
+
+    table_key_orig = read_as("hardware_tcm_1/table_key", tcm_file, "ak")
+
+    # take all rows, but use include/exclude a lot
+    truncate(
+        infile=hit_file,
+        outfile=outfile,
+        length_or_slice=len(table_key_orig),
+        overwrite=True,
+        tcm_file=tcm_file,
+        include_list=["ch1052803/*", "ch1052804/hit/energy_in_pe"],
+        exclude_list=[
+            "ch1052803/hit/energy_in_pe_dplms",
+            "ch1052803/hit/is_valid_hit_dplms",
+        ],
+    )
+
+    assert sorted(lh5.ls(outfile)) == ["ch1052803", "ch1052804"]
+
+    assert sorted(lh5.ls(outfile, "ch1052803/hit/")) == sorted(
+        [
+            "ch1052803/hit/energy_in_pe",
+            "ch1052803/hit/is_valid_hit",
+            "ch1052803/hit/timestamp",
+            "ch1052803/hit/trigger_pos",
+            "ch1052803/hit/trigger_pos_dplms",
+            "ch1052803/hit/has_any_noise",
+        ]
+    )
+
+    assert sorted(lh5.ls(outfile, "ch1052804/hit/")) == sorted(
+        [
+            "ch1052804/hit/energy_in_pe",
+        ]
+    )
+
+    assert ak.all(
+        read_as("ch1052803/hit/energy_in_pe", hit_file, "ak")
+        == read_as("ch1052803/hit/energy_in_pe", outfile, "ak")
+    )
+
+    assert ak.all(
+        read_as("ch1052804/hit/energy_in_pe", hit_file, "ak")
+        == read_as("ch1052804/hit/energy_in_pe", outfile, "ak")
+    )

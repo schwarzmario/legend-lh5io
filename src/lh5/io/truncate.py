@@ -40,7 +40,12 @@ def _is_included(
             if fnmatch.fnmatch(name, exc.strip("/")):
                 return False
     if include_list is not None:
-        return any(fnmatch.fnmatch(name, inc.strip("/")) for inc in include_list)
+        # match also parents if descendant is included
+        include_list_ = []
+        for inc in include_list:
+            segments = inc.strip("/").split("/")
+            include_list_ += ["/".join(segments[: i + 1]) for i in range(len(segments))]
+        return any(fnmatch.fnmatch(name, inc.strip("/")) for inc in include_list_)
     return True
 
 
@@ -106,7 +111,12 @@ def map_lgdo_arrays(
             for key, val in lgdo.items()
         }
         mp = {key: val for key, val in mp.items() if val is not None}
-        return type(lgdo)(mp, attrs=lgdo.attrs)  # inherit attrs from original
+        attrs = lgdo.attrs
+        if isinstance(lgdo, Table):
+            # need to drop datatype in case part of its content will not be included,
+            # as table column names are part of datatype attribute
+            attrs.pop("datatype", None)
+        return type(lgdo)(mp, attrs=attrs)  # inherit attrs from original
     if isinstance(lgdo, (VectorOfVectors, Array)):  # treat as leave here
         ak_array = lgdo.view_as("ak")
         assert isinstance(ak_array, ak.Array)
