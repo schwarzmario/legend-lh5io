@@ -5,7 +5,8 @@ from __future__ import annotations
 import fnmatch
 import logging
 import re
-from collections.abc import Callable
+import sys
+from typing import Protocol
 
 import awkward as ak
 from lgdo.types import LGDO, Array, Struct, Table, VectorOfVectors, WaveformTable
@@ -14,6 +15,18 @@ import lh5
 from lh5 import read, read_as
 
 log = logging.getLogger(__name__)
+
+
+class LGDOMappable(Protocol):
+    def __call__(self, lgdo: str, input_array: ak.Array) -> ak.Array: ...
+
+
+class LGDOTruncator(LGDOMappable, Protocol):
+    """Try to get info on how much rows to read before performing the actual read
+    for performance improvement."""
+
+    def start_row(self, lgdo: str) -> int: ...
+    def n_rows(self, lgdo: str) -> int: ...
 
 
 def _is_included(
@@ -32,7 +45,7 @@ def _is_included(
 
 
 def map_lgdo_arrays(
-    func: Callable[[str, ak.Array], ak.Array],
+    func: LGDOMappable,
     lgdo: LGDO,
     name: str,
     *,
@@ -40,7 +53,9 @@ def map_lgdo_arrays(
     exclude_list: list[str] | None = None,
 ) -> LGDO | None:
     """Map a function acting on awkward arrays contained in the lgdo tree on the tree.
-    The tree structure itself is not altered (compare to map in functional languages).
+    The tree structure itself is not altered (compare to map in functional languages),
+    except if branches are excluded (explicitly or because they are not in the
+    include_list passed).
     Also, attributes are propagated unchanged."""
     if not _is_included(name, include_list=include_list, exclude_list=exclude_list):
         msg = f"{name} does not match pattern incl={include_list}, excl={exclude_list}"
@@ -114,7 +129,7 @@ def map_lgdo_arrays(
 def map_lgdo_arrays_on_file(
     infile: str,
     outfile: str,
-    func: Callable[[str, ak.Array], ak.Array],
+    func: LGDOTruncator,
     overwrite: bool = False,
     *,
     include_list: list | None = None,
@@ -145,7 +160,15 @@ def map_lgdo_arrays_on_file(
             msg = f"{root_name} does not match pattern incl={include_list}, excl={exclude_list}"
             log.debug(msg)
             continue
-        lh5_obj = read(root_name, infile)
+        log.info(
+            f"Reading {root_name} from {infile} with start_row={func.start_row(root_name)}, n_rows={func.n_rows(root_name)}"
+        )
+        lh5_obj = read(
+            root_name,
+            infile,
+            start_row=func.start_row(root_name),
+            n_rows=func.n_rows(root_name),
+        )
 
         lh5_obj = map_lgdo_arrays(
             func,
@@ -176,7 +199,7 @@ def map_lgdo_arrays_on_file(
 
         else:
             msg = f"appending to {outfile}"
-            log.info(msg)
+            log.debug(msg)
 
             # if isinstance(lh5_obj, Table): # should be done already...
             #    _inplace_table_filter(lgdo, lh5_obj, obj_list)
@@ -194,10 +217,46 @@ def truncate_array_channel(
     return input_array[row_indices]
 
 
+class HitBasedTruncator(LGDOTruncator):
+    def __init__(self, table_key_trunc, row_in_table_trunc) -> None:
+        self.table_key_trunc = table_key_trunc
+        self.row_in_table_trunc = row_in_table_trunc
+
+    def _row_indices(self, lgdo: str) -> ak.Array:
+        match = re.search(r"^ch(\d+)(?:/|$)", lgdo)
+        if match:
+            channel_key = int(match.group(1))
+            # print(f"Extracted chid: {channel_key}")
+        else:
+            msg = f"Cannot deduce channel key from {lgdo}"
+            raise RuntimeError(msg)
+        return ak.flatten(self.row_in_table_trunc[self.table_key_trunc == channel_key])
+
+    def start_row(self, lgdo: str) -> int:
+        try:
+            row_indices = self._row_indices(lgdo)
+            return int(ak.min(row_indices))
+        except RuntimeError:
+            return 0
+
+    def n_rows(self, lgdo: str) -> int:
+        try:
+            row_indices = self._row_indices(lgdo)
+            return int(ak.max(row_indices) - ak.min(row_indices) + 1)
+        except RuntimeError:
+            return sys.maxsize
+
+    def __call__(self, lgdo: str, input_array: ak.Array) -> ak.Array:
+        # Need to subtract start_row in case it's non-zero,
+        # because arrays read with start_row parameter will be shifted
+        row_indices = self._row_indices(lgdo) - self.start_row(lgdo)
+        return input_array[row_indices]
+
+
 # this creates the truncator function for hit-ordered arrays
 def create_hit_ordered_truncation_func(
     tcm_file: str, length_or_slice: int | slice
-) -> Callable[[str, ak.Array], ak.Array]:
+) -> LGDOTruncator:
     row_in_table = read_as("hardware_tcm_1/row_in_table", tcm_file, "ak")
     table_key = read_as("hardware_tcm_1/table_key", tcm_file, "ak")
     # truncate
@@ -209,39 +268,45 @@ def create_hit_ordered_truncation_func(
     row_in_table_trunc = row_in_table[slice_]
     table_key_trunc = table_key[slice_]  # was :length
 
-    def truncator(lgdo: str, input_array: ak.Array) -> ak.Array:
-        # Search for the pattern
-        match = re.search(r"^ch(\d+)/", lgdo)
-        if match:
-            channel_key = int(match.group(1))
-            # print(f"Extracted chid: {channel_key}")
-        else:
-            msg = f"Cannot deduce channel key from {lgdo}"
-            raise RuntimeError(msg)
-        return truncate_array_channel(
-            input_array=input_array,
-            table_key_trunc=table_key_trunc,
-            row_in_table_trunc=row_in_table_trunc,
-            channel_key=channel_key,
-        )
+    return HitBasedTruncator(
+        table_key_trunc=table_key_trunc, row_in_table_trunc=row_in_table_trunc
+    )
 
-    return truncator
+
+class EvtBasedTruncator(LGDOTruncator):
+    def __init__(self, slice_: slice) -> None:
+        self.slice_ = slice_
+
+    def start_row(self, lgdo: str) -> int:  # noqa: ARG002
+        return self.slice_.start or 0
+
+    def n_rows(self, lgdo: str) -> int:  # noqa: ARG002
+        if self.slice_.stop is None:
+            return sys.maxsize
+        return self.slice_.stop - (self.slice_.start or 0)
+
+    def __call__(self, lgdo: str, input_array: ak.Array) -> ak.Array:  # noqa: ARG002
+        shifted_slice = (
+            self.slice_
+            if self.slice_.start is None
+            else slice(0, self.slice_.stop - self.slice_.start)
+        )
+        # Need to shift by self.slice_.start
+        # because arrays read with start_row parameter will be shifted
+        return input_array[shifted_slice]
 
 
 # this creates the truncator function for evt-ordered arrays (tcm, evt)
 def create_evt_ordered_truncation_func(
     length_or_slice: int | slice,
-) -> Callable[[str, ak.Array], ak.Array]:
+) -> LGDOTruncator:
     slice_ = (
         length_or_slice
         if isinstance(length_or_slice, slice)
         else slice(length_or_slice)
     )
 
-    def truncator(_: str, input_array: ak.Array) -> ak.Array:
-        return input_array[slice_]
-
-    return truncator
+    return EvtBasedTruncator(slice_=slice_)
 
 
 def truncate(
